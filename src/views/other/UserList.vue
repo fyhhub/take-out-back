@@ -1,38 +1,21 @@
 <template>
   <a-card :bordered="false">
     <div class="table-page-search-wrapper">
-      <a-button type="primary" icon="plus" v-action:add>新建</a-button>
+      <a-button type="primary" icon="plus" v-action:add @click="handleAddClick">新建</a-button>
     </div>
     <a-divider />
     <s-table
       size="default"
       :columns="columns"
       :data="loadData"
+      ref="table"
     >
-      <div
-        slot="expandedRowRender"
-        slot-scope="record"
-        style="margin: 0">
-        <a-row
-          :gutter="24"
-          :style="{ marginBottom: '12px' }">
-          <a-col :span="12" v-for="(role, index) in record.permissions" :key="index" :style="{ marginBottom: '12px' }">
-            <a-col :lg="4" :md="24">
-              <span>{{ role.permissionName }}：</span>
-            </a-col>
-            <a-col :lg="20" :md="24" v-if="role.actionEntitySet.length > 0">
-              <a-tag color="cyan" v-for="(action, k) in role.actionEntitySet" :key="k">{{ action.describe }}</a-tag>
-            </a-col>
-            <a-col :span="20" v-else>-</a-col>
-          </a-col>
-        </a-row>
-      </div>
       <span slot="action" slot-scope="text, record">
         <a @click="handleEdit(record)">编辑</a>
         <a-divider type="vertical" />
         <a-popconfirm
           title="你确定删除吗?"
-          @confirm="handleDelete"
+          @confirm="handleDelete(record)"
           okText="确定"
           cancelText="取消"
         >
@@ -55,7 +38,7 @@
           label="用户名"
           hasFeedback
         >
-          <a-input v-model="mdl.user_name" disabled="disabled"/>
+          <a-input v-model="mdl.user_name"/>
         </a-form-item>
         <a-form-item
           :labelCol="labelCol"
@@ -63,7 +46,7 @@
           label="密码"
           hasFeedback
         >
-          <a-input-password v-model="mdl.user_password" disabled="disabled"/>
+          <a-input-password v-model="mdl.user_password"/>
         </a-form-item>
         <a-form-item
           :labelCol="labelCol"
@@ -78,7 +61,7 @@
             :defaultValue="mdl.role_id"
           >
             <a-select-option value="admin">admin</a-select-option>
-            <a-select-option value="lucy">Lucy (101)</a-select-option>
+            <a-select-option value="business">business</a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item
@@ -103,60 +86,29 @@
           label="头像"
           hasFeedback
         >
-          <div class="clearfix">
-            <a-upload
-              :action="BASE_URL + '/upload'"
-              listType="picture-card"
-              :fileList="fileList"
-              @preview="handleUploadPreview"
-              @change="handleUploadChange"
-              :remove="handleUploadRemove"
-            >
-              <div v-if="fileList.length === 0">
-                <a-icon type="plus" />
-                <div class="ant-upload-text">上传头像</div>
-              </div>
-            </a-upload>
-            <a-modal :visible="previewVisible" :footer="null" @cancel="handleUploadCancel">
-              <img alt="example" style="width: 100%" :src="previewImage" />
-            </a-modal>
-          </div>
-        </a-form-item>
-        <a-divider />
-        <a-form-item
-          :labelCol="labelCol"
-          :wrapperCol="wrapperCol"
-          label="拥有权限"
-          hasFeedback
-        >
-          <a-row :gutter="16" v-for="(permission, index) in mdl.permissions" :key="index">
-            <a-col :span="4" style="white-space: nowrap">
-              {{ permission.permissionName }}：
-            </a-col>
-            <a-col :span="20">
-              <a-tag :key="i" v-for="(tag, i) in permission.actionsOptions">{{ tag.label }}</a-tag>
-            </a-col>
-          </a-row>
+          <CUpload :files="mdl.user_avatar" @change="handleUploadChange"/>
         </a-form-item>
       </a-form>
     </a-modal>
   </a-card>
 </template>
-
 <script>
 import { STable } from '@/components'
+import CUpload from '@/components/common/CUpload'
 import { getUserList, getRoleList } from '@/api/manage'
-
+import { deleteUser, update } from '@/api/user'
 export default {
   name: 'TableList',
   components: {
-    STable
+    STable,
+    CUpload
   },
   data () {
     return {
       description: '列表使用场景：后台管理中的权限管理以及角色管理，可用于基于 RBAC 设计的角色权限控制，颗粒度细到每一个操作类型。',
       previewVisible: false,
       visible: false,
+      defaultOptions: [],
       labelCol: {
         xs: { span: 24 },
         sm: { span: 5 }
@@ -166,7 +118,9 @@ export default {
         sm: { span: 16 }
       },
       form: null,
-      mdl: {},
+      mdl: {
+        user_avatar: ''
+      },
 
       // 高级搜索 展开/关闭
       advanced: false,
@@ -205,6 +159,7 @@ export default {
       loadData: parameter => {
         return getUserList()
           .then(res => {
+            res.result.data = res.result.data.filter(e => e.role_id === 'admin')
             return res.result
           })
       },
@@ -219,7 +174,8 @@ export default {
           status: 'done',
           url: 'https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png',
         },
-      ]
+      ],
+      formSatus: false
     }
   },
   created () {
@@ -234,17 +190,27 @@ export default {
       }
       this.mdl = Object.assign({}, record)
       const res = await getRoleList({ role_id })
-      this.mdl.permissions = res.result.data[0].permissions
+      this.mdl.permissions = res.result.data.find(e => e.id === role_id).permissions
       this.pMap[role_id] = this.mdl.permissions
       this.mdl.permissions.forEach(permission => {
-        permission.actionsOptions = permission.actionEntitySet.map(action => {
-          return { label: action.describe, value: action.action, defaultCheck: !action.defaultCheck }
+        this.defaultOptions = permission.actionEntitySet.map(action => {
+          return { label: action.describe, value: action.action }
         })
+        permission.actionsOptions = this.defaultOptions.map(e => e.value)
       })
       this.visible = true
+      this.formSatus = false
     },
-    handleOk () {
+    async handleOk () {
+      if (this.formSatus) {
 
+        return
+      }
+      const res = await update(this.mdl)
+      if (res.code === 200) {
+        this.$refs.table.refresh()
+        this.visible = false
+      }
     },
     onChange (selectedRowKeys, selectedRows) {
       this.selectedRowKeys = selectedRowKeys
@@ -260,18 +226,27 @@ export default {
       this.previewImage = file.url || file.thumbUrl
       this.previewVisible = true
     },
-    handleUploadChange ({ fileList }) {
-      this.fileList = fileList
-    },
     handleUploadRemove (file) {
-      console.log('handleUploadRemove', file)
       return true
     },
     handleRoleChange () {
-
     },
-    handleDelete () {
-
+    async handleDelete (record) {
+      const res = await deleteUser(record.user_id, record.business_id)
+      if (res.code === 200) {
+        this.$refs.table.refresh()
+      }
+    },
+    handleSelectChange (values) {
+      console.log('values: ', values)
+    },
+    handleUploadChange ({ list }) {
+      this.mdl.user_avatar = list.join(',')
+    },
+    handleAddClick () {
+      this.mdl = {}
+      this.visible = true
+      this.formSatus = true
     }
   },
   watch: {

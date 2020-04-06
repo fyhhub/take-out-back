@@ -19,7 +19,6 @@
   </div>
 </template>
 <script>
-// import { deleteImage } from '@/api/upload'
 export default {
   props: {
     id: {

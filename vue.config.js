@@ -32,7 +32,10 @@ const vueConfig = {
     // webpack plugins
     plugins: [
       // Ignore all locale files of moment.js
-      new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/)
+      new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+      function(compiler) {
+        console.log(compiler)
+      }
     ],
     // if prod, add externals
     externals: isProd ? assetsCDN.externals : {

@@ -12,10 +12,13 @@ module.exports = {
     'padded-blocks': 'off',
     'camelcase': 'off',
     'comma-dangle': 'off',
+    'no-return-assign': 'off',
+    'no-sequences': 'off',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
     'generator-star-spacing': 'off',
     'no-undef': 'off',
     'no-mixed-operators': 0,
+    'no-multiple-empty-lines': 'off',
     'vue/max-attributes-per-line': [
       2,
       {

@@ -4,7 +4,8 @@ const api = {
   create: '/api/business/create',
   list: '/api/business/list',
   update: '/api/business/update',
-  delete: '/api/business/delete'
+  delete: '/api/business/delete',
+  one: '/api/business/one'
 }
 
 export function getCategory () {
@@ -45,3 +46,14 @@ export function deleteBusiness (params = {}) {
     params
   })
 }
+
+export function getOneBusiness (id) {
+  return axios({
+    url: api.one,
+    method: 'get',
+    params: {
+      id
+    }
+  })
+}
+

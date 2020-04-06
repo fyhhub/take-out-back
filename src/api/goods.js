@@ -3,7 +3,8 @@ const api = {
   create: '/api/goods/create',
   list: '/api/goods/list',
   delete: '/api/goods/delete',
-  update: '/api/goods/update'
+  update: '/api/goods/update',
+  some: '/api/goods/some',
 }
 
 export function createGoods (data) {
@@ -19,6 +20,14 @@ export function getGoodsList (params) {
     url: api.list,
     method: 'get',
     params
+  })
+}
+
+export function getSomeGoods (data) {
+  return axios({
+    url: api.some,
+    method: 'post',
+    data
   })
 }
 

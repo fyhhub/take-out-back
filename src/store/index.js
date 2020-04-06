@@ -20,10 +20,12 @@ export default new Vuex.Store({
     permission
   },
   state: {
-
+    order_list: {}
   },
   mutations: {
-
+    SET_ORDER_LIST (state, list) {
+      state.order_list = list.reduce((obj, item) => (obj[item.id] = item, obj), {})
+    }
   },
   actions: {
 
